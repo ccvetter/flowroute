@@ -1,0 +1,2 @@
+// compact scrollable feed of recent orders with key details and status badges, linked to order detail view for quick access to customer service issues or fulfillment bottlenecksq
+import React from 'react';
