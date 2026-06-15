@@ -356,7 +356,7 @@ interface AisleMapProps {
 }
 
 const AisleMap: React.FC<AisleMapProps> = ({
-    bin, secondaryBin, aislePerZone, tok,
+    bin, secondaryBin, aislesPerZone, tok,
 }) => {
     const BAYS = 4;
     const targetAisle = aisleIndex(bin.aisle, aislesPerZone);
@@ -365,6 +365,358 @@ const AisleMap: React.FC<AisleMapProps> = ({
     const secBay      = secondaryBin ? Math.min(bayIndex(secondaryBin.bay), BAYS - 1) : -1;
 
     return (
-        
-    )
+        <div style={{ padding: `0 ${tok.padding} ${tok.padding}` }}>
+            <SectionLabel size="xs" style={{ marginBottom: tok.gap * 2 }}>
+                Zone {bin.zone} - aisle layout
+            </SectionLabel>
+            <div
+                className="fr-bin__aisle-grid"
+                style={{
+                    gridTemplateColumns: `repeat(${aislesPerZone}, ${tok.aisleCell}px)`,
+                    gridTemplateRows:    `repeat(${BAYS}, ${tok.aisleCell}px)`,
+                    gap: 2,
+                }}
+                role="grid"
+                aria-label={`Aisle map for zone ${bin.zone}`}
+            >
+                {Array.from({ length: BAYS }).map((_, bayRow) =>
+                    Array.from({ length: aislesPerZone }).map((_, aisleCol) => {
+                        const isTarget    = aisleCol === targetAisle && bayRow === targetBay;
+                        const isSecondary = aisleCol === secAisle    && bayRow === secBay;
+                        const isTargetAisle = aisleCol === targetAisle;
+                        const isSecAisle    = aisleCol === secAisle;
+            
+                        const bg =
+                        isTarget    ? C.aisleActive :
+                        isSecondary ? C.aisleSecondary :
+                        isTargetAisle ? 'rgba(186,117,23,0.18)' :
+                        isSecAisle    ? 'rgba(15,110,86,0.14)'  :
+                        C.aisleBg;
+            
+                        return (
+                        <div
+                            key={`${bayRow}-${aisleCol}`}
+                            role="gridcell"
+                            aria-label={
+                            isTarget    ? `Target bin: aisle ${aisleCol + 1}, bay ${String.fromCharCode(65 + bayRow)}` :
+                            isSecondary ? `Secondary bin`  : undefined
+                            }
+                            className="fr-bin__aisle-cell"
+                            style={{
+                            background: bg,
+                            borderRadius: isTarget || isSecondary ? 3 : 2,
+                            width:  tok.aisleCell,
+                            height: tok.aisleCell,
+                            outline: isTarget    ? `2px solid ${C.aisleActive}`    : isSecondary ? `2px solid ${C.aisleSecondary}` : 'none',
+                            outlineOffset: 1,
+                            position: 'relative',
+                            }}
+                        />
+                        );
+                    }),
+                )}
+            </div>
+            {/* Aisle numbers */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${aislesPerZone}, ${tok.aisleCell}px)`,
+                gap: 2,
+                marginTop: 3,
+            }}>
+                {Array.from({ length: aislesPerZone }).map((_, i) => (
+                    <div key={i} style={{
+                        fontSize: '8px',
+                        color: i === targetAisle ? C.zoneActive : i === secAisle ? C.zoneSecondary : C.labelText,
+                        textAlign: 'center',
+                        fontFamily: "'IBM Plex Mono', monospace",
+                        fontWeight: i === targetAisle || i === secAisle ? 600 : 400,
+                    }}>
+                        {String(i + 1).padStart(2, '0')}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+interface LevelIndicatorProps {
+    level: string;
+    secondaryLevel?: string;
+    tok: SizeTokens;
 }
+
+const LevelIndicator: React.FC<LevelIndicatorProps> = ({ level, secondaryLevel, tok }) => {
+    const maxLevels = 5;
+    const targetLvl = Math.min(Math.max(parseInt(level, 10) || 1, 1), maxLevels);
+    const secLvl = secondaryLevel
+        ? Math.min(Math.max(parseInt(secondaryLevel, 10) || 1, 1), maxLevels)
+        : null;
+
+    const BAR_HEIGHTS = [12, 18, 24, 30, 36];
+
+    return (
+        <div style={{ padding: `0 ${tok.padding} ${tok.padding}` }}>
+            <SectionLabel size="xs" style={{ marginBottom: tok.gap * 2}}>
+                Shelf level
+            </SectionLabel>
+            <div className="fr-bin__levels" style={{ height: 40, alignItems: 'flex-end' }}>
+                {Array.from({ length: maxLevels }).map((_, i) => {
+                    const lvl = i + 1;
+                    const isTarget = lvl === targetLvl;
+                    const isSec = lvl === secLvl;
+                    const height = BAR_HEIGHTS[i] ?? 12;
+                    const bg =
+                        isTarget ? C.binBg :
+                        isSec ? C.binSecBg :
+                        C.levelColors[i] ?? C.aisleBg;
+
+                    return (
+                        <div key={lvl} style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                            <div style={{
+                                fontSize: '9px',
+                                color: isTarget ? C.zoneActive : isSec ? C.zoneSecondary : C.labelText,
+                                fontFamily: "'IBM Plex Mono', monospace",
+                                fontWeight: isTarget || isSec ? 600 : 400,
+                                lineHeight: 1,
+                            }}>
+                                L{lvl}
+                            </div>
+                            <div
+                                className="fr-bin__level-bar"
+                                style={{
+                                    height,
+                                    background: bg,
+                                    borderRadius: '2px 2px 0 0',
+                                    width: '100%',
+                                    outline: isTarget ? `2px solid ${C.binBg}` : isSec ? `2px solid ${C.binSecBg}` : 'none',
+                                    outlineOffset: 1,
+                                }}
+                                aria-label={`Level ${lvl}${isTarget ? ' - target' : ''}${isSec ? ' - secondary' : ''}`}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+interface AddressDetailProps {
+    bin: BinAddress;
+    secondaryBin?: BinAddress;
+    tok: SizeTokens;
+}
+
+const AddressDetail: React.FC<AddressDetailProps> = ({ bin, secondaryBin, tok }) => {
+    const segments: { key: string; val: string; secVal?: string | undefined}[] = [
+        { key: 'Zone',  val: bin.zone,  ...(secondaryBin ? { secVal: secondaryBin.zone } : {}) },
+        { key: 'Aisle', val: bin.aisle, ...(secondaryBin ? { secVal: secondaryBin.aisle } : {}) },
+        { key: 'Bay',   val: bin.bay,   ...(secondaryBin ? { secVal: secondaryBin.bay } : {}) },
+        { key: 'Level', val: bin.level, ...(secondaryBin ? { secVal: secondaryBin.level } : {}) },
+    ];
+
+    return (
+        <div className="fr-bin__detail" style={{ padding: `${tok.padding} 0` }}>
+            {segments.map((seg, i) => {
+                const changed = secondaryBin && seg.val !== seg.secVal;
+                return (
+                    <React.Fragment key={seg.key}>
+                        { i > 0 && <div className="fr-bin__detail-divider" />}
+                        <div
+                            className={[
+                                'fr-bin__detail-seg',
+                                changed ? 'fr-bin__detail-seg--active' : '',
+                            ].filter(Boolean).join(' ')}
+                            style={{ gap: 4 }}
+                        >
+                            <div className="fr-bin__detail-val" style={{ fontSize: tok.addrSize }}>
+                                {seg.val}
+                            </div>
+                            <div className="fr-bin__detail-key">{seg.key}</div>
+                            {secondaryBin && seg.secVal && seg.secVal !== seg.val && (
+                                <div   
+                                    className="fr-bin__detail-val fr-bin__detail-seg--secondary"
+                                    style={{ fontSize: `calc(${tok.addrSize} * 0.65)`, color: C.zoneSecondary, marginTop: 2 }}
+                                >
+                                    → {seg.secVal}
+                                </div>
+                            )}
+                        </div>
+                    </React.Fragment>
+                );
+            })}
+        </div>
+    );
+};
+
+/**
+ * Component
+ */
+export const BinLocator: React.FC<BinLocatorProps> = ({
+    bin,
+    zones = DEFAULT_ZONES,
+    aislesPerZone = 8,
+    size = 'md',
+    view = 'both',
+    secondaryBin,
+    onZoneClick,
+    className,
+    style,
+}) => {
+    React.useEffect(() => { ensureStyles(); }, []);
+
+    const target = parseBin(bin);
+    const secondary = secondaryBin ? parseBin(secondaryBin) : undefined;
+    const tok = SIZE_TOKENS[size];
+
+    const showMap = view === 'map' || view === 'both';
+    const showDetail = view === 'detail' || view === 'both';
+
+    const addressStr = binToString(target);
+    const secAddrStr = secondary ? binToString(secondary) : undefined;
+
+    return (
+        <div 
+            className={['fr-bin', className].filter(Boolean).join(' ')}
+            style={style}
+            aria-label={`Bin locator: ${addressStr}${secAddrStr ? ` → ${secAddrStr}` : ''}`}
+        >
+            {/* Zone map */}
+            {showMap && (
+                <div className="fr-bin__section">
+                    <ZoneMap
+                        zones={zones}
+                        targetZone={target.zone}
+                        secondaryZone={secondary?.zone ?? ''}
+                        tok={tok}
+                        onZoneClick={onZoneClick ?? (() => {})}
+                    />
+                </div>
+            )}
+
+            {/* Aisle map -- only when view includes map */}
+            {showMap && (
+                <>
+                    <div className="fr-bin__divider" />
+                    <div className="fr-bin__section">
+                        <AisleMap
+                            bin={target}
+                            secondaryBin={secondary ?? {zone: '', aisle: '', bay: '', level: ''}}
+                            aislesPerZone={aislesPerZone}
+                            tok={tok}
+                        />
+                    </div>
+                </>
+            )}
+
+            {/* Level indicator */}
+            {showMap && (
+                <>
+                    <div className="fr-bin__divider" />
+                    <div className="fr-bin__section">
+                        <LevelIndicator
+                            level={target.level}
+                            secondaryLevel={secondary?.level ?? ''}
+                            tok={tok}
+                        />
+                    </div>
+                </>
+            )}
+
+            {/* Address detail row */}
+            {showDetail && (
+                <>
+                    <div className="fr-bin__divider" />
+                    <div className="fr-bin__section">
+                        <AddressDetail
+                            bin={target}
+                            secondaryBin={secondary ?? {zone: '', aisle: '', bay: '', level: ''}}
+                            tok={tok}
+                        />
+                    </div>
+                </>
+            )}
+
+            {/* Footer - full address in MonoID style */}
+            <div 
+                className="fr-bin__footer"
+                style={{ padding: `${parseInt(tok.padding) / 2}px ${tok.padding}` }}
+            >
+                <span className="fr-bin__footer-label" style={{ fontSize: tok.labelSize }}>
+                    Bin address
+                </span>
+                <MonoID id={addressStr} variant="bin" size="xs" />
+                {secAddrStr && (
+                    <>
+                        <span style={{ color: C.labelText, fontSize: tok.labelSize, margin: '0 4px' }}>→</span>
+                        <MonoID id={secAddrStr} variant="bin" size="xs" />
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
+
+BinLocator.displayName = 'BinLocator';
+
+export default BinLocator;
+
+// ============================================================
+// Usage examples (remove before shipping)
+// ============================================================
+ 
+/*
+ 
+// --- Basic usage ---
+<BinLocator bin="B-04-C-2" />
+ 
+// --- BinAddress object ---
+<BinLocator bin={{ zone: 'B', aisle: '04', bay: 'C', level: '2' }} />
+ 
+// --- Compact form input ---
+<BinLocator bin="B04C2" />
+ 
+// --- Sizes ---
+<BinLocator bin="B-04-C-2" size="sm" />   // pick task card, tight layout
+<BinLocator bin="B-04-C-2" size="md" />   // default — detail drawer
+<BinLocator bin="B-04-C-2" size="lg" />   // full-panel view
+ 
+// --- Views ---
+<BinLocator bin="B-04-C-2" view="map"    />   // zone + aisle grid only
+<BinLocator bin="B-04-C-2" view="detail" />   // address breakdown only
+<BinLocator bin="B-04-C-2" view="both"   />   // default
+ 
+// --- Transfer task (origin → destination) ---
+<BinLocator
+  bin="B-04-C-2"
+  secondaryBin="D-07-A-1"
+/>
+// Amber highlights = current bin
+// Teal highlights  = destination bin
+// Changed segments shown in detail row with "→ newVal"
+ 
+// --- Custom warehouse layout ---
+<BinLocator
+  bin="C-03-B-1"
+  zones={['A', 'B', 'C', 'D', 'E', 'F']}
+  aislesPerZone={12}
+/>
+ 
+// --- Zone click handler (navigate to zone overview) ---
+<BinLocator
+  bin="B-04-C-2"
+  onZoneClick={(zone) => navigateTo(`/warehouse/${zone}`)}
+/>
+ 
+// --- In a PickTask card ---
+<div className="pick-task">
+  <div className="pick-task__bin">B-04</div>
+  <div className="pick-task__info">...</div>
+  <BinLocator bin="B-04-C-2" size="sm" view="detail" />
+</div>
+ 
+// --- In an order detail drawer ---
+<SectionLabel ruled>Pick location</SectionLabel>
+<BinLocator bin={order.binAddress} size="md" />
+ 
+*/
