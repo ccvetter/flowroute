@@ -4,12 +4,11 @@ import { ActionButton } from '../shared/ActionButton.js';
 import { MonoID } from '../shared/MonoID.js';
 import { Timestamp } from '../shared/Timestamp.js';
 import { SectionLabel } from '../shared/SectionLabel.js';
-import type { LargeNumberLike } from 'node:crypto';
 
 /**
  * Types
  */
-export type ReorderAlertVariant = 
+export type ReorderAlertVariant =
     | 'inline'  // single-line row - for lists and table rows
     | 'banner'  // full-width dismissible bar - for page/section headers
     | 'card'    // self-contained card - for inventory panels
@@ -101,22 +100,22 @@ function defaultReorderQty(
  * Tokens
  */
 interface UrgencyTokens {
-    accentColor:  string;
-    accentBg:     string;
-    accentText:   string;
-    trackBg:      string;
-    icon:         React.ReactNode;
+    accentColor: string;
+    accentBg: string;
+    accentText: string;
+    trackBg: string;
+    icon: React.ReactNode;
     defaultLabel: string;
-    ariaLive:     'assertive' | 'polite';
+    ariaLive: 'assertive' | 'polite';
 }
 
 const URGENCY_TOKENS: Record<ReorderAlertUrgency, UrgencyTokens> = {
     critical: {
         accentColor: '#D85A30',
-        accentBg:    '#FAECE7',
-        accentText:  '#712B13',
-        trackBg:     'rgba(216,90,48,0.10)',
-        ariaLive:    'assertive',
+        accentBg: '#FAECE7',
+        accentText: '#712B13',
+        trackBg: 'rgba(216,90,48,0.10)',
+        ariaLive: 'assertive',
         defaultLabel: 'Out of stock',
         icon: (
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -128,10 +127,10 @@ const URGENCY_TOKENS: Record<ReorderAlertUrgency, UrgencyTokens> = {
     },
     warning: {
         accentColor: '#BA7517',
-        accentBg:    '#FAEEDA',
-        accentText:  '#633806',
-        trackBg:     'rgba(186,117,23,0.10)',
-        ariaLive:    'polite',
+        accentBg: '#FAEEDA',
+        accentText: '#633806',
+        trackBg: 'rgba(186,117,23,0.10)',
+        ariaLive: 'polite',
         defaultLabel: 'Low stock',
         icon: (
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -143,10 +142,10 @@ const URGENCY_TOKENS: Record<ReorderAlertUrgency, UrgencyTokens> = {
     },
     scheduled: {
         accentColor: '#0F6E56',
-        accentBg:    '#E1F5EE',
-        accentText:  '#085041',
-        trackBg:     'rgba(15,110,86,0.08)',
-        ariaLive:    'polite',
+        accentBg: '#E1F5EE',
+        accentText: '#085041',
+        trackBg: 'rgba(15,110,86,0.08)',
+        ariaLive: 'polite',
         defaultLabel: 'Reorder due',
         icon: (
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -310,24 +309,24 @@ const CloseIcon: React.FC<{ size?: number }> = ({ size = 14 }) => (
  * Variant renderers
  */
 interface VariantProps {
-    sku:           string;
-    name:          string;
-    stockLevel:    number;
+    sku: string;
+    name: string;
+    stockLevel: number;
     reorderThreshold: number;
-    resolvedQty:   number;
-    uom:           string;
-    urgency:       ReorderAlertUrgency;
-    ut:            UrgencyTokens;
-    inboundQty?:   number;
-    inboundEta?:   Date | string | number;
-    triggeredAt?:  Date | string | number;
-    dismissible:   boolean;
-    loading:       boolean;
-    onReorder?:    (sku: string, qty: number) => void;
-    onDismiss?:    (sku: string) => void;
-    onViewSKU?:    (sku: string) => void;
-    className?:    string;
-    style?:        React.CSSProperties;
+    resolvedQty: number;
+    uom: string;
+    urgency: ReorderAlertUrgency;
+    ut: UrgencyTokens;
+    inboundQty?: number | undefined;
+    inboundEta?: Date | string | number | undefined;
+    triggeredAt?: Date | string | number | undefined;
+    dismissible: boolean;
+    loading: boolean;
+    onReorder?: ((sku: string, qty: number) => void) | undefined;
+    onDismiss?: ((sku: string) => void) | undefined;
+    onViewSKU?: ((sku: string) => void) | undefined;
+    className?: string | undefined;
+    style?: React.CSSProperties | undefined;
 }
 
 const InlineVariant: React.FC<VariantProps> = ({
@@ -420,5 +419,374 @@ const BannerVariant: React.FC<VariantProps> = ({
                 )}
             </div>
         </div>
+        <div className="fr-reorder__actions">
+            {onViewSKU && (
+                <ActionButton intent="ghost" size="sm" onClick={() => onViewSKU(sku)}>
+                    View SKU
+                </ActionButton>
+            )}
+            {onReorder && (
+                <ActionButton intent="primary" size="sm" loading={loading} onClick={() => onReorder(sku, resolvedQty)}>
+                    Reorder {resolvedQty} {uom}
+                </ActionButton>
+            )}
+            {dismissible && onDismiss && (
+                <button
+                    type="button"
+                    className="fr-reorder__dismiss"
+                    style={{ color: ut.accentText }}
+                    onClick={() => onDismiss(sku)}
+                    aria-label="Dismiss alert"
+                >
+                    <CloseIcon />
+                </button>
+            )}
+        </div>
     </div>
-)
+);
+
+const CardVariant: React.FC<VariantProps> = ({
+    sku, name, stockLevel, reorderThreshold, resolvedQty, uom,
+    urgency, ut, inboundQty, inboundEta, triggeredAt, dismissible, loading,
+    onReorder, onDismiss, onViewSKU, className, style,
+}) => (
+    <div
+        className={['fr-reorder', 'fr-reorder--card', className].filter(Boolean).join(' ')}
+        style={{
+            background: ut.accentBg,
+            borderColor: `${ut.accentColor}25`,
+            borderLeftColor: ut.accentColor,
+            ...style,
+        }}
+        role="alert"
+        aria-live={ut.ariaLive}
+        aria-label={`Reorder alert for ${name}`}
+    >
+        {/* Card header */}
+        <div className="fr-reorder__card-header">
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div
+                    className="fr-reorder__icon-wrap"
+                    style={{ background: `${ut.accentColor}18`, color: ut.accentColor }}
+                >
+                    {ut.icon}
+                </div>
+                <div>
+                    <div className="fr-reorder__title" style={{ color: ut.accentText }}>
+                        {ut.defaultLabel}
+                    </div>
+                    <div className="fr-reorder__name" style={{ color: ut.accentText }}>
+                        {name}
+                    </div>
+                    <MonoID id={sku} variant="sku" size="xs" copyable={false} style={{ marginTop: 3 }} />
+                </div>
+            </div>
+            {dismissible && onDismiss && (
+                <button
+                    type="button"
+                    className="fr-reorder__dismiss"
+                    style={{ color: ut.accentText }}
+                    onClick={() => onDismiss(sku)}
+                    aria-label="Dismiss alert"
+                >
+                    <CloseIcon />
+                </button>
+            )}
+        </div>
+
+        {/* Stats row */}
+        <div className="fr-reorder__stats">
+            {[
+                { label: 'In stock', val: stockLevel, color: ut.accentColor },
+                { label: 'Threshold', val: reorderThreshold, color: '#888780' },
+                { label: 'Reorder', val: resolvedQty, color: ut.accentColor },
+            ].map(s => (
+                <div className="fr-reorder__stat" key={s.label}>
+                    <span className="fr-reorder__stat-val" style={{ color: s.color }}>
+                        {s.val.toLocaleString()}
+                    </span>
+                    <span className="fr-reorder__stat-label">{s.label}</span>
+                </div>
+            ))}
+        </div>
+
+        {/* Inbound info */}
+        {inboundQty && inboundEta && (
+            <div
+                className="fr-reorder__inbound"
+                style={{ background: '#E1F5EE', color: '#085041' }}
+            >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
+                    {inboundQty.toLocaleString()} {uom} inbound
+                </span>
+                <span style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: '11px', opacity: 0.75 }}>
+                    - arriving <Timestamp value={inboundEta} format="absolute-short" size="xs" />
+                </span>
+            </div>
+        )}
+
+        {/* Triggered at */}
+        {triggeredAt && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <SectionLabel size="xs" muted>Alert triggered</SectionLabel>
+                <Timestamp value={triggeredAt} format="relative" size="xs" />
+            </div>
+        )}
+
+        {/* Actions */}
+        <div className="fr-reorder__actions">
+            {onViewSKU && (
+                <ActionButton intent="secondary" size="sm" onClick={() => onViewSKU(sku)}>
+                    View SKU
+                </ActionButton>
+            )}
+            {onReorder && (
+                <ActionButton
+                    intent="primary"
+                    size="sm"
+                    fullWidth={!onViewSKU}
+                    loading={loading}
+                    onClick={() => onReorder(sku, resolvedQty)}
+                >
+                    Reorder {resolvedQty.toLocaleString()} {uom}
+                </ActionButton>
+            )}
+        </div>
+    </div>
+);
+
+const ToastVariant: React.FC<VariantProps> = ({
+    sku, name, stockLevel, reorderThreshold, resolvedQty, uom,
+    urgency, ut, dismissible, loading,
+    onReorder, onDismiss, onViewSKU, className, style,
+}) => (
+    <div
+        className={['fr-reorder', 'fr-reorder--toast', className].filter(Boolean).join(' ')}
+        style={{ borderLeftColor: ut.accentColor, ...style }}
+        role="alert"
+        aria-live={ut.ariaLive}
+        aria-atomic="true"
+    >
+        <span className="fr-reorder__icon" style={{ color: ut.accentColor }}>
+            {ut.icon}
+        </span>
+        <div className="fr-reorder__body">
+            <div className="fr-reorder__title">
+                {ut.defaultLabel} - {name}
+            </div>
+            <div className="fr-reorder__desc">
+                {stockLevel} {uom} remaining · threshold {reorderThreshold} {uom}
+            </div>
+            {(onReorder || onViewSKU) && (
+                <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
+                    {onViewSKU && (
+                        <button
+                            type="button"
+                            className="fr-reorder__action-link"
+                            style={{ color: '#B4B2A9' }}
+                            onClick={() => onViewSKU(sku)}
+                        >
+                            View SKU
+                        </button>
+                    )}
+                    {onReorder && (
+                        <button
+                            type="button"
+                            className="fr-reorder__action-link"
+                            style={{ color: ut.accentColor }}
+                            onClick={() => onReorder(sku, resolvedQty)}
+                        >
+                            Reorder now
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
+        {dismissible && onDismiss && (
+            <button 
+                type="button"
+                className="fr-reorder__dismiss"
+                onClick={() => onDismiss(sku)}
+                aria-label="Dismiss alert"
+            >
+                <CloseIcon />
+            </button>
+        )}
+    </div>
+);
+
+/**
+ * Component
+ */
+export const ReorderAlert: React.FC<ReorderAlertProps> = ({
+    sku,
+    name,
+    stockLevel,
+    reorderThreshold,
+    outOfStockThreshold = 0,
+    reorderQty,
+    uom = 'ea',
+    urgency: urgencyProp,
+    triggeredAt,
+    inboundQty,
+    inboundEta,
+    variant = 'inline',
+    dismissible,
+    loading = false,
+    onReorder,
+    onDismiss,
+    onViewSKU,
+    className,
+    style,
+}) => {
+    const [dismissed, setDismissed] = React.useState(false);
+
+    React.useEffect(() => { ensureStyles(); }, []);
+
+    if (dismissed) return null;
+
+    const urgency = urgencyProp ?? deriveUrgency(stockLevel, reorderThreshold, outOfStockThreshold);
+    const ut = URGENCY_TOKENS[urgency];
+    const resolvedQty = reorderQty ?? defaultReorderQty(stockLevel, reorderThreshold, urgency);
+    const isDismissible = dismissible ?? (variant === 'banner' || variant === 'toast');
+
+    function handleDismiss() {
+        setDismissed(true);
+        onDismiss?.(sku);
+    }
+
+    const variantProps: VariantProps = {
+        sku, name, stockLevel, reorderThreshold, resolvedQty, uom,
+        urgency, ut, inboundQty, inboundEta, triggeredAt,
+        dismissible: isDismissible,
+        loading,
+        onReorder,
+        onDismiss: handleDismiss,
+        onViewSKU,
+        className,
+        style,
+    };
+
+    switch (variant) {
+        case 'banner': return <BannerVariant {...variantProps} />;
+        case 'card':   return <CardVariant   {...variantProps} />;
+        case 'toast':  return <ToastVariant  {...variantProps} />;
+        default:       return <InlineVariant {...variantProps} />;
+    }
+};
+
+ReorderAlert.displayName = 'ReorderAlert';
+
+export default ReorderAlert;
+
+// ============================================================
+// Usage examples (remove before shipping)
+// ============================================================
+
+/*
+ 
+// --- Urgency levels (auto-derived) ---
+<ReorderAlert sku="SKU-00412" name="Nike Air Max 90" stockLevel={0}  reorderThreshold={10} />  // critical
+<ReorderAlert sku="SKU-00412" name="Nike Air Max 90" stockLevel={6}  reorderThreshold={10} />  // warning
+<ReorderAlert sku="SKU-00412" name="Nike Air Max 90" stockLevel={15} reorderThreshold={10} />  // scheduled (above threshold)
+ 
+// --- Variants ---
+<ReorderAlert variant="inline"  sku="SKU-00412" name="Nike Air Max 90" stockLevel={6} reorderThreshold={10} />
+<ReorderAlert variant="banner"  sku="SKU-00412" name="Nike Air Max 90" stockLevel={6} reorderThreshold={10} />
+<ReorderAlert variant="card"    sku="SKU-00412" name="Nike Air Max 90" stockLevel={6} reorderThreshold={10} />
+<ReorderAlert variant="toast"   sku="SKU-00412" name="Nike Air Max 90" stockLevel={6} reorderThreshold={10} />
+ 
+// --- With all data ---
+<ReorderAlert
+  variant="card"
+  sku="SKU-00412"
+  name="Nike Air Max 90 — Size 10"
+  stockLevel={4}
+  reorderThreshold={20}
+  outOfStockThreshold={0}
+  reorderQty={100}
+  uom="ea"
+  triggeredAt={new Date()}
+  inboundQty={60}
+  inboundEta="2026-06-10T09:00:00Z"
+  onReorder={(sku, qty) => createPurchaseOrder(sku, qty)}
+  onViewSKU={(sku)      => navigateTo(`/inventory/${sku}`)}
+  onDismiss={(sku)      => muteAlert(sku)}
+/>
+ 
+// --- With loading state (PO being created) ---
+const [loading, setLoading] = React.useState(false);
+<ReorderAlert
+  variant="card"
+  sku="SKU-00412"
+  name="Nike Air Max 90"
+  stockLevel={4}
+  reorderThreshold={20}
+  loading={loading}
+  onReorder={async (sku, qty) => {
+    setLoading(true);
+    await createPO(sku, qty);
+    setLoading(false);
+  }}
+/>
+ 
+// --- Dismissible banner (page header) ---
+<ReorderAlert
+  variant="banner"
+  sku="SKU-00412"
+  name="Nike Air Max 90"
+  stockLevel={0}
+  reorderThreshold={20}
+  dismissible
+  onDismiss={(sku) => muteAlertFor(sku, '24h')}
+  onReorder={(sku, qty) => createPO(sku, qty)}
+/>
+ 
+// --- Inline in a SKUCard or inventory list row ---
+<SKUCard ... />
+<ReorderAlert
+  variant="inline"
+  sku={sku.id}
+  name={sku.name}
+  stockLevel={sku.stock}
+  reorderThreshold={sku.threshold}
+  onReorder={handleReorder}
+/>
+ 
+// --- Toast (triggered by a webhook / real-time event) ---
+const { toast } = useToast();
+// On stock drop event from server:
+// Instead of a raw toast, render a ReorderAlert in toast variant:
+<ToastContainer>
+  <ReorderAlert
+    variant="toast"
+    sku="SKU-00412"
+    name="Nike Air Max 90"
+    stockLevel={0}
+    reorderThreshold={20}
+    onReorder={(sku, qty) => createPO(sku, qty)}
+    onViewSKU={(sku)      => navigateTo(`/inventory/${sku}`)}
+    onDismiss={(sku)      => setDismissed(true)}
+  />
+</ToastContainer>
+ 
+// --- Multiple alerts in an inventory panel ---
+<div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+  {lowStockItems.map(item => (
+    <ReorderAlert
+      key={item.sku}
+      variant="inline"
+      sku={item.sku}
+      name={item.name}
+      stockLevel={item.stock}
+      reorderThreshold={item.threshold}
+      onReorder={handleReorder}
+    />
+  ))}
+</div>
+ 
+*/
